@@ -33,4 +33,4 @@ main = do
   case parse parseTPDB file text of
     Left e -> error (show e)
     Right trs -> do
-      writeFile "complete.txt" (intercalate "\n" [show l ++ " -> " ++ show r | (l,r) <- complete ["i","*","e","g","f"] trs])
+      writeFile "complete.txt" (intercalate "\n" [show l  ++ " -> " ++ show r | (l,r) <- complete ["i","*","e","g","f"] trs])

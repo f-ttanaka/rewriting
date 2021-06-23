@@ -67,6 +67,11 @@ rewrite rs t
   | (u:_) <- reducts rs t = Just u
   | otherwise = Nothing
 
+reducible :: TRS -> Term -> Bool
+reducible rs t
+  | Just _ <- rewrite rs t = True
+  | otherwise = False
+
 nf :: TRS -> Term -> Term
 nf rs t
   | Just u <- rewrite rs t = nf rs u
@@ -125,7 +130,7 @@ sameRules r1 r2 = renameRule "x" 0 r1 == renameRule "x" 0 r2
 
 cp :: TRS -> TRS
 cp trs =
-  [(substitute r1 sigma, replace (substitute l1 sigma) (substitute r2 sigma) p)
+  [(substitute r1 sigma, substitute (replace l1 r2 p) sigma)
                     | r  <- trs,
                       r' <- trs,
                       let (l1, r1) = renameRule "x" 0 r,
@@ -205,12 +210,27 @@ sameCP :: (Term,Term) -> (Term,Term) -> Bool
 sameCP (s1,s2) (t1,t2) = sameRules (s1,s2) (t1,t2) || sameRules (s1,s2) (t2,t1)
 
 sameTRS :: TRS -> TRS -> Bool
-sameTRS rs1 rs2 = all (\r1 -> any (sameRules r1) rs2) rs1
+sameTRS rs1 rs2 =
+  all (\r1 -> any (sameRules r1) rs2) rs1 && all (\r2 -> any (sameRules r2) rs1) rs2
+
+deduce' :: Precedence -> TRS -> TRS -> TRS
+deduce' _  re [] = re
+deduce' pr re ((l,r):rs) 
+  | l' == r = deduce' pr re rs
+  | gtLpo pr l' r = deduce' pr (re ++ [(l',r)]) rs
+  | gtLpo pr r l' = deduce' pr (re ++ [(r,l')]) rs
+  | otherwise     = deduce' pr (re ++ [(l,r)]) rs
+  where
+    rs' = re ++ rs
+    l'  = nf rs' l
+
+deduce :: Precedence -> TRS -> TRS
+deduce pr rs = deduce' pr [] rs
 
 complete' :: Precedence -> TRS -> TRS -> TRS -> Maybe TRS
-complete' pr ri rj [] = if sameTRS ri rj then Just rj else complete' pr rj rj (cp rj)
-  -- | null rj   = Just ri
-  -- | otherwise = complete' pr (unionBy sameRules ri rj) [] (cp rj)
+complete' pr ri rj []
+  | sameTRS ri rj = Just rj
+  | otherwise = let r = unionBy sameRules ri rj in Just r-- complete' pr r r (cp r)
 complete' pr ri rj ((s,t):cps)
   | s' == t'       = complete' pr ri rj cps
   | gtLpo pr s' t' = complete' pr ri (rj ++ [(s',t')]) cps
