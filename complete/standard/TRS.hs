@@ -218,6 +218,7 @@ size (F _ []) = 1
 size (F _ ts) = sum [size t | t <- ts]
 
 choose :: Precedence -> [(Term,Term)] -> Maybe (Rule, [(Term,Term)])
+choose _ [] = error "choose"
 choose p es
   | gtLpo p u v = Just ((u,v),es')
   | gtLpo p v u = Just ((v,u),es')
@@ -245,7 +246,7 @@ complete' p ei ri
     let ri' = unionBy sameRules ri [(l,r)]
         e1 = addEquations (l,r) ri
         e2 = cp ri'
-        rj = simplifyTRS ri
+        rj = simplifyTRS ri'
         ej = simplifyEquations rj (ei ++ e1 ++ e2)
     in complete' p ej rj
   | otherwise = Nothing
